@@ -33,7 +33,7 @@ def get_data(json_data):
     return classes, mentions
 
 import random
-def get_training_and_test(classes, percent):
+def get_training_and_test(classes, cut_percentage, percent_list):
     train_data = []
     test_data = []
     train_labels = []
@@ -42,11 +42,21 @@ def get_training_and_test(classes, percent):
         entities = list(classes[key])
         shuffled_idx = range(len(entities))
         random.shuffle(shuffled_idx)
-        num_pick = int(len(entities) * percent)
-        train_data.append([entities[i] for i in shuffled_idx[:num_pick]])
-        train_labels.append(label_dict[key])
-        test_data.append([entities[i] for i in shuffled_idx[num_pick:]])
-        test_labels.append(label_dict[key])
+        num_train = int(len(entities) * cut_percentage)
+        basic_train_set = [entities[i] for i in shuffled_idx[:num_train]]
+        basic_test_set = [entities[i] for i in shuffled_idx[num_train:]]
+        for p in percent_list:
+            shuffled_idx = range(len(basic_train_set))
+            random.shuffle(shuffled_idx)
+            num_pick = int(len(basic_train_set) * p * 0.01)
+            train_data.append([basic_train_set[i] for i in shuffled_idx[:num_pick]])
+            train_labels.append(label_dict[key])
+        for p in percent_list:
+            shuffled_idx = range(len(basic_test_set))
+            random.shuffle(shuffled_idx)
+            num_pick = int(len(basic_test_set) * p * 0.01)
+            test_data.append([basic_test_set[i] for i in shuffled_idx[:num_pick]])
+            test_labels.append(label_dict[key])
     return train_data, train_labels, test_data, test_labels
 
 train_file = 'train.json'
@@ -56,7 +66,9 @@ with open(train_file) as f:
         data.append(json.loads(line))
     labels, entities = get_data(data)
 label_dict = dict(zip(labels.keys(), range(len(labels.keys()))))
-train_data, train_labels, test_data, test_labels = get_training_and_test(labels, 0.7)
+train_data, train_labels, test_data, test_labels = get_training_and_test(labels, 0.7, range(30, 100, 10))
+print 'Size of training set: ', len(train_labels)
+print 'Size of test set: ', len(test_labels)
 
 import numpy as np
 def get_pretrained_word_embeddings():
@@ -112,9 +124,9 @@ print 'One hot label shape: ', one_hot_labels.shape
 
 import tensorflow as tf
 # Network Parameters
-learning_rate = 0.01
-training_iters = 30000
-default_batch_size = 20
+learning_rate = 0.001
+training_iters = 100000
+default_batch_size = 50
 display_step = 100
 n_input = embedding_size
 n_steps = MAX_DOCUMENT_LENGTH
@@ -138,7 +150,7 @@ POOLING_STRIDE = 1
 l2_loss = tf.constant(0.0)
 
 # Create a convolution + maxpool layer for each filter size
-filter_sizes = [3, 4, 5]
+filter_sizes = [2, 3, 4]
 num_filters = 128
 
 def conv_net(x):
