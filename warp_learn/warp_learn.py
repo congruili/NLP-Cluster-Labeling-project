@@ -90,16 +90,15 @@ class WarpLearn:
             # Pick a random labeled example (xi, yi)
             pos_idx = np.random.choice(range(n_samples), 1)[0]
             pos_score = np.dot(np.dot(self.L, Y_dict[Y[pos_idx]]), np.dot(self.C, X[pos_idx]))
-            N = 0
 
             labels = Y_dict.keys()
             labels.remove(Y[pos_idx])
-            while 1:
+
+            for N in range(1, n_labels):
                 neg_label = np.random.choice(labels, 1)[0]
                 neg_score = np.dot(np.dot(self.L, Y_dict[neg_label]), np.dot(self.C, X[pos_idx]))
-                N += 1
 
-                if neg_score > pos_score - 1 or N >= n_labels - 1:
+                if neg_score > pos_score - 1:
                     break
 
             if neg_score > pos_score - 1:
