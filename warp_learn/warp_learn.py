@@ -8,7 +8,6 @@ This software implements the algorithm described in this paper:
 
 '''
 
-import warnings
 import logging
 from time import time
 import numpy as np
