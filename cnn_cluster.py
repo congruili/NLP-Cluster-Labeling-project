@@ -122,6 +122,68 @@ def get_one_hot_labels(target_classes):
 one_hot_labels = get_one_hot_labels(train_labels)
 print 'One hot label shape: ', one_hot_labels.shape
 
+
+#=========================================================================
+from time import time
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import offsetbox
+from sklearn import (manifold, datasets, decomposition, ensemble,
+                     discriminant_analysis, random_projection)
+
+X = []
+y = []
+for key in labels:
+    entities = list(labels[key])
+    X.append(pre_embeddings[vocab[e]] for e in entities)
+    y.append(key for e in entities)
+
+n_samples, n_features = X.shape
+n_neighbors = 30
+
+# Scale and visualize the embedding vectors
+def plot_embedding(X, title=None):
+    x_min, x_max = np.min(X, 0), np.max(X, 0)
+    X = (X - x_min) / (x_max - x_min)
+
+    plt.figure()
+    ax = plt.subplot(111)
+    for i in range(X.shape[0]):
+        plt.text(X[i, 0], X[i, 1], str(y[i]),
+                 color=plt.cm.Set1(i / 10.),
+                 fontdict={'weight': 'bold', 'size': 9})
+
+    if hasattr(offsetbox, 'AnnotationBbox'):
+        # only print thumbnails with matplotlib > 1.0
+        shown_images = np.array([[1., 1.]])  # just something big
+        for i in range(X.shape[0]):
+            dist = np.sum((X[i] - shown_images) ** 2, 1)
+            if np.min(dist) < 4e-3:
+                # don't show points that are too close
+                continue
+            shown_images = np.r_[shown_images, [X[i]]]
+            imagebox = offsetbox.AnnotationBbox(
+                offsetbox.OffsetImage(digits.images[i], cmap=plt.cm.gray_r),
+                X[i])
+    plt.xticks([]), plt.yticks([])
+    if title is not None:
+        plt.title(title)
+
+# t-SNE embedding of the digits dataset
+print("Computing t-SNE embedding")
+tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+t0 = time()
+X_tsne = tsne.fit_transform(X)
+
+plot_embedding(X_tsne,
+               "t-SNE embedding of the digits (time %.2fs)" %
+               (time() - t0))
+
+plt.show()
+#=========================================================================
+print hello
+
+
 import tensorflow as tf
 # Network Parameters
 learning_rate = 0.001
