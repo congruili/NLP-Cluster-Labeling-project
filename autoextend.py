@@ -32,9 +32,9 @@ def get_data(json_data):
                 raw_classes[l].add(entity)
                 raw_mentions[entity].add(l)
         	i += 1
-        	if i >= 3000:
+        	if i >= 50000:
         		break
-    	if i >= 3000:
+    	if i >= 50000:
         	break
     classes = defaultdict(list)
     mentions = defaultdict(list)
@@ -91,8 +91,7 @@ for e in entities.keys():
         continue
 
 import tensorflow as tf
-batch_size = 1
-X_entities = tf.placeholder("float", [len(train_embeddings.keys()), 1])
+X_entities = tf.placeholder("float", [None, len(train_embeddings.keys()), 1])
 X_recover = {}
 
 def encoder(x):
@@ -102,10 +101,10 @@ def encoder(x):
     	W = []
     	for i in range(len(entities[ent]) - 1):
     		w = tf.Variable(0.0)
-    		M[(ent, entities[ent][i])] = tf.mul(X_entities[k], w)
+    		M[(ent, entities[ent][i])] = tf.mul(X_entities[:, k, 0], w)
     		W.append(w)
     	sum = tf.reduce_sum(W)
-    	M[(ent, entities[ent][len(entities[ent]) - 1])] = tf.mul(X_entities[k], tf.sub(tf.constant(1.0), sum))
+    	M[(ent, entities[ent][len(entities[ent]) - 1])] = tf.mul(X_entities[:, k, 0], tf.sub(tf.constant(1.0), sum))
 
     for l in labels.keys():
         mem_list = [M[k] for k in M.keys() if k[1] == l]
@@ -136,15 +135,10 @@ def decoder(clusters):
 clusters = encoder(X_entities)
 X_recover = decoder(clusters)
 
-learning_rate = 0.01
-# Define loss and optimizer, minimize the squared error
+learning_rate = 0.001
 loss = tf.reduce_mean(tf.square(X_entities - X_recover))
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-
-# Initializing the variables
 init = tf.initialize_all_variables()
-
-# Add ops to save and restore all the variables.
 saver = tf.train.Saver()
 
 print 'Model is defined...'
@@ -152,8 +146,8 @@ print 'Model is defined...'
 import random
 
 training_iters = 300000
-default_batch_size = 1
-display_step = 2
+default_batch_size = 100
+display_step = 10
 with tf.Session() as sess:
     if ans:
         sess.run(init)
@@ -167,28 +161,23 @@ with tf.Session() as sess:
                 n_processed = 0
                 shuffled_idx = range(embedding_size)
                 random.shuffle(shuffled_idx)
-            selected_idx = shuffled_idx[n_processed : min(n_processed + default_batch_size, embedding_size)][0]
-            #n_processed += len(selected_idx)
-            n_processed += 1
-            #n_processed_total += len(selected_idx)
-            n_processed_total += 1
-            #batch_size = len(selected_idx)
-            batch_size = 1
+            selected_idx = shuffled_idx[n_processed : min(n_processed + default_batch_size, embedding_size)]
+            n_processed += len(selected_idx)
+            n_processed_total += len(selected_idx)
+            batch_size = len(selected_idx)
             fdict = {}
             X = []
-            #for idx in selected_idx:
-            X.append(np.array([train_embeddings[e][selected_idx] for e in train_embeddings.keys()]))
-            #fdict[X_entities] = np.array(X).reshape((batch_size, len(train_embeddings.keys())))
-            fdict[X_entities] = np.array(X).reshape((len(train_embeddings.keys()), 1))
-            print step
+            for idx in selected_idx:
+            	X.append(np.array([train_embeddings[e][idx] for e in train_embeddings.keys()]))
+            fdict[X_entities] = np.array(X).reshape((batch_size, len(train_embeddings.keys()), 1))
             sess.run(optimizer, feed_dict=fdict)
             if step % display_step == 0:
                 loss_val = sess.run(loss, feed_dict=fdict)
                 print "Iter " + str(n_processed_total) + ", Minibatch Loss= " + "{:.6f}".format(loss_val)
             step += 1
         print "Optimization Finished!"
-        save_path = saver.save(sess, "autoextent.ckpt")
+        save_path = saver.save(sess, "autoextend.ckpt")
         print("Model saved in file: %s" % save_path)
     else:
-        saver.restore(sess, "autoextent.ckpt")
+        saver.restore(sess, "autoextend.ckpt")
         print("Model restored.")
