@@ -21,7 +21,6 @@ from collections import *
 def get_data(json_data):
     raw_classes = defaultdict(set)
     raw_mentions = defaultdict(set)
-    i = 0
     for d in json_data:
         sentence = d['tokens']
         for m in d['mentions']:
@@ -31,11 +30,6 @@ def get_data(json_data):
                 entity = entity.encode("utf-8")
                 raw_classes[l].add(entity)
                 raw_mentions[entity].add(l)
-        	i += 1
-        	if i >= 50000:
-        		break
-    	if i >= 50000:
-        	break
     classes = defaultdict(list)
     mentions = defaultdict(list)
     for l in raw_classes.keys():
@@ -81,6 +75,7 @@ embedding_size = pre_embeddings.shape[1]
 num_of_clusters = len(labels)
 num_of_entities = len(entities)
 print 'Number of labels: ', num_of_clusters
+print 'embedding size: ', embedding_size
 
 train_embeddings = {}
 for e in entities.keys():
@@ -89,45 +84,51 @@ for e in entities.keys():
     except KeyError:
         pass
         continue
+print 'Actual entity size: ', len(train_embeddings.keys())
 
 import tensorflow as tf
-X_entities = tf.placeholder("float", [None, len(train_embeddings.keys()), 1])
+X_entities = tf.placeholder("float", [len(train_embeddings.keys()), embedding_size])
 X_recover = {}
 
+import collections
 def encoder(x):
     clusters = {}
-    M = {}
+    M = collections.defaultdict(list)
     for k, ent in zip(range(len(train_embeddings.keys())), train_embeddings.keys()):
-    	W = []
-    	for i in range(len(entities[ent]) - 1):
-    		w = tf.Variable(0.0)
-    		M[(ent, entities[ent][i])] = tf.mul(X_entities[:, k, 0], w)
-    		W.append(w)
-    	sum = tf.reduce_sum(W)
-    	M[(ent, entities[ent][len(entities[ent]) - 1])] = tf.mul(X_entities[:, k, 0], tf.sub(tf.constant(1.0), sum))
+        if len(entities[ent]) == 1:
+            M[entities[ent][0]].append(X_entities[k, :])
+        else:
+            W = []
+            for i in range(len(entities[ent]) - 1):
+                w = tf.Variable(tf.random_normal([embedding_size]), dtype=tf.float32)
+                M[entities[ent][i]].append(tf.mul(X_entities[k, :], w))
+                W.append(w)
+            sum = tf.add_n(W)
+            M[entities[ent][len(entities[ent]) - 1]].append(tf.mul(X_entities[k, :], tf.sub(tf.ones([embedding_size], dtype=tf.float32), sum)))
 
     for l in labels.keys():
-        mem_list = [M[k] for k in M.keys() if k[1] == l]
-       	if len(mem_list) > 0:
-        	clusters[l] = tf.add_n(mem_list)
+        if len(M[l]) > 0:
+            clusters[l] = tf.add_n(M[l])
     print 'Encoding finished...'
     return clusters
 
 def decoder(clusters):
-    M = {}
-    for k, l in zip(range(len(clusters.keys())), clusters.keys()):
-    	W = []
-    	for i in range(len(labels[l]) - 1):
-    		w = tf.Variable(0.0)
-    		M[(l, labels[l][i])] = tf.mul(clusters[l], w)
-    		W.append(w)
-    	sum = tf.reduce_sum(W)
-    	M[(l, labels[l][len(labels[l]) - 1])] = tf.mul(clusters[l], tf.sub(tf.constant(1.0), sum))
+    M = collections.defaultdict(list)
+    for k, ent in zip(range(len(train_embeddings.keys())), train_embeddings.keys()):
+        if len(entities[ent]) == 1:
+            M[ent].append(clusters[entities[ent][0]])
+        else:
+            W = []
+            for i in range(len(entities[ent]) - 1):
+                w = tf.Variable(tf.random_normal([embedding_size]), dtype=tf.float32)
+                M[ent].append(tf.mul(clusters[entities[ent][i]], w))
+                W.append(w)
+            sum = tf.add_n(W)
+            M[ent].append(tf.mul(clusters[entities[ent][len(entities[ent]) - 1]], tf.sub(tf.ones([embedding_size], dtype=tf.float32), sum)))
 
     output = []
-    for m in train_embeddings.keys():
-        label_list = [M[k] for k in M.keys() if k[1] == m]
-        output.append(tf.add_n(label_list))
+    for ent in train_embeddings.keys():
+        output.append(tf.add_n(M[ent]))
     print 'Decoding finished...'
     return output
 
@@ -135,7 +136,7 @@ def decoder(clusters):
 clusters = encoder(X_entities)
 X_recover = decoder(clusters)
 
-learning_rate = 0.001
+learning_rate = 0.01
 loss = tf.reduce_mean(tf.square(X_entities - X_recover))
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 init = tf.initialize_all_variables()
@@ -144,36 +145,20 @@ saver = tf.train.Saver()
 print 'Model is defined...'
 
 import random
-
 training_iters = 300000
-default_batch_size = 100
-display_step = 10
+display_step = 50
 with tf.Session() as sess:
     if ans:
         sess.run(init)
         step = 0
-        n_processed = 0
-        n_processed_total = 0
-        shuffled_idx = range(embedding_size)
-        random.shuffle(shuffled_idx)
         while step < training_iters:
-            if n_processed >= embedding_size:
-                n_processed = 0
-                shuffled_idx = range(embedding_size)
-                random.shuffle(shuffled_idx)
-            selected_idx = shuffled_idx[n_processed : min(n_processed + default_batch_size, embedding_size)]
-            n_processed += len(selected_idx)
-            n_processed_total += len(selected_idx)
-            batch_size = len(selected_idx)
             fdict = {}
-            X = []
-            for idx in selected_idx:
-            	X.append(np.array([train_embeddings[e][idx] for e in train_embeddings.keys()]))
-            fdict[X_entities] = np.array(X).reshape((batch_size, len(train_embeddings.keys()), 1))
+            X = np.array([train_embeddings[e] for e in train_embeddings.keys()])
+            fdict[X_entities] = X.reshape((len(train_embeddings.keys()), embedding_size))
             sess.run(optimizer, feed_dict=fdict)
             if step % display_step == 0:
                 loss_val = sess.run(loss, feed_dict=fdict)
-                print "Iter " + str(n_processed_total) + ", Minibatch Loss= " + "{:.6f}".format(loss_val)
+                print "Iter " + str(step) + ", Minibatch Loss= " + "{:.6f}".format(loss_val)
             step += 1
         print "Optimization Finished!"
         save_path = saver.save(sess, "autoextend.ckpt")
