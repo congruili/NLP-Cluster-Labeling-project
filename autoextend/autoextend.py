@@ -2,25 +2,13 @@
 msg = 'Do you want to retrain the model?'
 ans = raw_input("%s (y/N) " % msg).lower() == 'y'
 
-import os.path
-from urllib import urlretrieve
-import zipfile
-def maybe_download(filename):
-    """Download a file if not present"""
-    if not os.path.exists(filename):
-        url = 'http://nlp.stanford.edu/data/'
-        filename, _ = urlretrieve(url + filename, filename)
-        zip_ref = zipfile.ZipFile(os.path, 'r')
-        zip_ref.extractall(os.path)
-        zip_ref.close()
-    return filename
-#filename = maybe_download('glove.6B.zip')
-
 import json
+import numpy as np
 from collections import *
 def get_data(json_data):
     raw_classes = defaultdict(set)
     raw_mentions = defaultdict(set)
+    i = 0
     for d in json_data:
         sentence = d['tokens']
         for m in d['mentions']:
@@ -30,6 +18,11 @@ def get_data(json_data):
                 entity = entity.encode("utf-8")
                 raw_classes[l].add(entity)
                 raw_mentions[entity].add(l)
+            i += 1
+            if i >= 8000:
+                break
+        if i >= 8000:
+            break
     classes = defaultdict(list)
     mentions = defaultdict(list)
     for l in raw_classes.keys():
@@ -37,6 +30,11 @@ def get_data(json_data):
     for m in raw_mentions.keys():
         mentions[m] = list(raw_mentions[m])
     return classes, mentions
+
+import cPickle as pickle
+def save_data(data, file_name):
+    with open(file_name, 'wb') as outfile:
+        pickle.dump(data, outfile)
 
 train_file = 'train.json'
 with open(train_file) as f:
@@ -47,30 +45,12 @@ with open(train_file) as f:
     print 'clusters: ', len(labels)
     print 'mentions: ', len(entities)
 label_dict = dict(zip(labels.keys(), range(len(labels.keys()))))
+save_data(entities, 'entities.p')
+save_data(labels, 'labels.p')
 
-import numpy as np
-def get_pretrained_word_embeddings():
-    vectors_file = 'glove.6B.100d.txt'
-    with open(vectors_file, 'r') as f:
-        vectors = {}
-        for line in f:
-            vals = line.rstrip().split(' ')
-            vectors[vals[0]] = [float(x) for x in vals[1:]]
-
-    vocab_size = len(vectors)
-    words = vectors.keys()
-    vocab = {w: idx for idx, w in enumerate(words)}
-    ivocab = {idx: w for idx, w in enumerate(words)}
-
-    vector_dim = len(vectors[ivocab[0]])
-    W = np.zeros((vocab_size, vector_dim))
-    for word, v in vectors.items():
-        if word == '<unk>':
-            continue
-        W[vocab[word], :] = v
-    return vocab, W
-vocab, pre_embeddings = get_pretrained_word_embeddings()
-embedding_size = pre_embeddings.shape[1]
+from embedding import PreTrainEmbedding
+embedding_size = 300
+embedding = PreTrainEmbedding('GoogleNews-vectors-negative300.bin.gz', embedding_size)
 
 num_of_clusters = len(labels)
 num_of_entities = len(entities)
@@ -79,11 +59,9 @@ print 'embedding size: ', embedding_size
 
 train_embeddings = {}
 for e in entities.keys():
-    try:
-        train_embeddings[e] = pre_embeddings[vocab[e]]
-    except KeyError:
-        pass
-        continue
+    result = embedding.get_embedding(e)
+    if result is not None:
+        train_embeddings[e] = result
 print 'Actual entity size: ', len(train_embeddings.keys())
 
 import tensorflow as tf
@@ -145,16 +123,16 @@ saver = tf.train.Saver()
 print 'Model is defined...'
 
 import random
-training_iters = 300000
+training_iters = 30000
 display_step = 50
 with tf.Session() as sess:
     if ans:
         sess.run(init)
         step = 0
+        fdict = {}
+        X = np.array([train_embeddings[e] for e in train_embeddings.keys()])
+        fdict[X_entities] = X.reshape((len(train_embeddings.keys()), embedding_size))
         while step < training_iters:
-            fdict = {}
-            X = np.array([train_embeddings[e] for e in train_embeddings.keys()])
-            fdict[X_entities] = X.reshape((len(train_embeddings.keys()), embedding_size))
             sess.run(optimizer, feed_dict=fdict)
             if step % display_step == 0:
                 loss_val = sess.run(loss, feed_dict=fdict)
@@ -166,3 +144,8 @@ with tf.Session() as sess:
     else:
         saver.restore(sess, "autoextend.ckpt")
         print("Model restored.")
+
+    cluster_embeddings = {}
+    for l in clusters.keys():
+        cluster_embeddings[l] = sess.run(clusters[l], feed_dict=fdict)
+    save_data(cluster_embeddings, 'cluster_embedding.p')
