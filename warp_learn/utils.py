@@ -5,6 +5,8 @@ Created on Nov, 2016
 
 '''
 
+import cPickle as pickle
+
 def check_is_fitted(estimator, attributes, msg=None, all_or_any=all):
     """Perform is_fitted validation for estimator.
     Checks if the estimator is fitted by verifying the presence of
@@ -40,3 +42,35 @@ def check_is_fitted(estimator, attributes, msg=None, all_or_any=all):
 
 class NotFittedError(ValueError, AttributeError):
     pass
+
+def calc_accuracy(sys_out, ground):
+    assert len(sys_out) == len(ground)
+    n = len(sys_out)
+    return sum([sys_out[i] == ground[i] for i in range(n)]) / float(n)
+
+def load_pickle(path_to_file):
+    try:
+        data = pickle.load(open(path_to_file, 'r'))
+    except Exception as e:
+        raise e
+
+    return data
+
+def get_emb(emb_file, labels):
+    import sys
+    sys.path.append("../autoextend")
+    from embedding import PreTrainEmbedding
+    pt = PreTrainEmbedding(emb_file, None)
+    label_dict = {}
+    for each in labels:
+        core = each.split(':')[-1].lower()
+        emb = pt.get_embedding(core)
+        if emb == None:
+            try:
+                emb = np.average(np.r_[[pt.get_embedding(x) for x in core.split('_') if x in pt.model]], axis=0)
+            except Exception as e:
+                raise e
+        if type(emb) == type(np.zeros(1)):
+            label_dict[each] = emb
+
+    return label_dict

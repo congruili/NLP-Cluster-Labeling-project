@@ -41,7 +41,7 @@ class WarpLearn:
         Number of iteration done before the next print.
         """
 
-    def __init__(self, dim, alpha=1e-2, tol=1e-5, max_iter=1000, norm_ctr=1., verbose=0, verbose_interval=10):
+    def __init__(self, dim, alpha=1e-2, tol=1e-5, max_iter=1000, norm_ctr=1., verbose=0, verbose_interval=100):
         self.dim = dim
         self.alpha = alpha
         self.tol = tol
@@ -52,7 +52,7 @@ class WarpLearn:
         self._check_initial_parameters()
 
 
-    def fit(self, X, Y, Y_dict):
+    def fit(self, X, Y, Y_dict, eval_):
         """Estimate the mapping functions.
 
         Parameters
@@ -60,7 +60,7 @@ class WarpLearn:
         X : array-like, shape (n_samples, n_features)
             The input data array.
 
-        Y : array-like, shape (n_samples, )
+        Y : list, length n_samples
             The corresponding label for each data sample in X.
 
         Y_dict : dict
@@ -129,7 +129,8 @@ class WarpLearn:
             # In original paper, convergence conditino is validation error does not improve
             # Here, we use a different strategy
             if change_:
-                diff_CL = np.linalg.norm(self.C - prev_C) + np.linalg.norm(self.L - prev_L)
+                # diff_CL = np.linalg.norm(self.C - prev_C) + np.linalg.norm(self.L - prev_L)
+                diff_CL = 1. - calc_accuracy(self.predict(eval_[0], Y_dict), eval_[1])
 
                 if diff_CL < self.tol:
                     self.converged_ = True
@@ -191,9 +192,9 @@ class WarpLearn:
         self._check_features(X, Y_dict)
 
     def _check_samples(self, X, Y):
-        if X.shape[0] != Y.shape[0]:
+        if X.shape[0] != len(Y):
             raise ValueError("The parameter X and Y should have consistent rows, "
-                    "but got X: %s and Y: %s" % (X.shape[0], Y.shape[0]))
+                    "but got X: %s and Y: %s" % (X.shape[0], len(Y)))
 
     def _check_features(self, X, Y_dict):
         if X.shape[1] != Y_dict.values()[0].shape[0]:
@@ -254,7 +255,7 @@ if __name__ == '__main__':
     test_clusters = np.random.randn(n_test_clusters, n_features)
 
     # Fit the model
-    wl = WarpLearn(dim=200, alpha=1e-2, tol=2, max_iter=1000, norm_ctr=1., verbose=2).fit(clusters, labels, label_dict)
+    wl = WarpLearn(dim=200, alpha=1e-2, tol=1, max_iter=1000, norm_ctr=1., verbose=2).fit(clusters, labels, label_dict)
     # Predict
     pred = wl.predict(test_clusters, label_dict)
     print 'pred labels:'

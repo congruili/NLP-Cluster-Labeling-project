@@ -35,4 +35,4 @@ class PreTrainEmbedding():
             W[vocab[word], :] = v
         return vocab, W
 
-        
+
