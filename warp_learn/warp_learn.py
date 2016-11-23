@@ -261,30 +261,3 @@ class WarpLearn(object):
         elif self.verbose >= 2:
             print("Initialization converged: %s\t time lapse %.5fs\t diff_CL %.5f" %
                   (self.converged_, time() - self._init_prev_time, diff_CL))
-
-
-if __name__ == '__main__':
-    import sys
-    logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
-    logger = logging.getLogger(sys.argv[0])
-    logger.info("running %s" % " ".join(sys.argv))
-
-    # Generate fake training set
-    n_clusters = 1000
-    n_features = 100
-    n_labels = 20
-    dim = 200 # mapping space
-    clusters = np.random.randn(n_clusters, n_features)
-    label_dict = dict(zip(range(n_labels), [np.random.randn(n_features) for i in range(n_labels)]))
-    labels = np.random.choice(label_dict.keys(), n_clusters)
-
-    # Generate fake test set
-    n_test_clusters = 100
-    test_clusters = np.random.randn(n_test_clusters, n_features)
-
-    # Fit the model
-    wl = WarpLearn(dim=200, alpha=1e-2, tol=1, max_iter=1000, norm_ctr=1., verbose=2).fit(clusters, labels, label_dict)
-    # Predict
-    pred = wl.predict(test_clusters, label_dict)
-    print 'pred labels:'
-    print pred

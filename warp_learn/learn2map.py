@@ -140,4 +140,3 @@ class Learn2Map(WarpLearn):
         yidx = score.argsort()[::-1][:topn]
 
         return [vocabs[idx] for idx in yidx]
-
