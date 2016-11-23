@@ -42,21 +42,27 @@ if __name__ == '__main__':
     # Generate training and test set
     labels = clus.keys()
     clusters = np.r_[clus.values()]
-    train_ratio = .9
+    train_ratio = .98
 
     train_label = labels[:int(len(labels)*train_ratio)]
     train_clus = clusters[:int(clusters.shape[0]*train_ratio)]
 
     test_label = labels[int(len(labels)*train_ratio):]
     test_clus = clusters[int(clusters.shape[0]*train_ratio):]
-
+    print len(test_clus)
     # Fit the model
-    wl = WarpLearn(dim=mapping_dim, alpha=1e-3, tol=1e-3, max_iter=4000, norm_ctr=2., verbose=2).fit(train_clus, train_label, label_dict, [test_clus, test_label])
+    wl = WarpLearn(dim=mapping_dim, alpha=1e-4, tol=1e-3, max_iter=1000, norm_ctr=2., verbose=2).fit(train_clus, train_label, label_dict, [test_clus, test_label])
+
+    # save model
+    # wl = WarpLearn(dim=mapping_dim, alpha=1e-4, tol=1e-3, max_iter=1000, norm_ctr=2., verbose=2).load_model('warp.mod')
+
     # Predict
     pred = wl.predict(test_clus, label_dict)
     # print 'pred labels:'
     # print pred
     accuracy = calc_accuracy(pred, test_label)
     print 's: %s' % accuracy
-    # import pdb;pdb.set_trace()
+
+    # save model
+    # wl.save_model('warp.mod')
 

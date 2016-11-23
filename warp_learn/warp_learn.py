@@ -13,7 +13,7 @@ from time import time
 import numpy as np
 from utils import *
 
-class WarpLearn:
+class WarpLearn(object):
     """Warp Learn Model.
 
         A supervised cluster labeling model based on word embeddings.
@@ -41,7 +41,8 @@ class WarpLearn:
         Number of iteration done before the next print.
         """
 
-    def __init__(self, dim, alpha=1e-2, tol=1e-5, max_iter=1000, norm_ctr=1., verbose=0, verbose_interval=100):
+    def __init__(self, dim=100, alpha=1e-2, tol=1e-5, max_iter=1000, norm_ctr=1.,
+                verbose=0, verbose_interval=100):
         self.dim = dim
         self.alpha = alpha
         self.tol = tol
@@ -66,6 +67,9 @@ class WarpLearn:
         Y_dict : dict
             The corresponding representation for all possible labels.
 
+        eval_ : [array-like, list]
+            evaluation set.
+
         Returns
         -------
         self
@@ -73,7 +77,7 @@ class WarpLearn:
         self._check_params(X, Y, Y_dict)
 
         n_samples, n_features = X.shape
-        n_labels = len(Y_dict.keys())
+        n_labels = len(Y_dict)
 
         # Initialization
         self._print_verbose_msg_init_beg()
@@ -166,6 +170,30 @@ class WarpLearn:
         yidx = np.argmax(score, axis=1)
 
         return [labels[idx] for idx in yidx]
+
+    def save_model(self, mod_file):
+        try:
+            with open(mod_file, 'wb') as mf:
+                np.savez(mf, C=self.C, L=self.L)
+        except Exception as e:
+            raise e
+        else:
+            mf.close()
+
+        return self
+
+    def load_model(self, mod_file):
+        try:
+            with open(mod_file, 'r') as mf:
+                npzfile = np.load(mf)
+                self.C = npzfile['C']
+                self.L = npzfile['L']
+        except Exception as e:
+            raise e
+        else:
+            mf.close()
+
+        return self
 
     def _check_initial_parameters(self):
         """Check values of the basic parameters.
