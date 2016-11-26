@@ -39,7 +39,7 @@ if __name__ == '__main__':
     #     raise e
 
     # Generate training and test set
-    train_ratio = .95
+    train_ratio = 1.
     pairs = list(pairs)
     train_pairs = pairs[:int(len(pairs)*train_ratio)]
 
@@ -49,7 +49,8 @@ if __name__ == '__main__':
 
     # validation set
     val_set = []
-    tmp = set([x for x in np.random.choice(list(set(zip(*train_pairs)[0])), 100, replace=False)])
+    # tmp = set([x for x in np.random.choice(list(set(zip(*train_pairs)[0])), 100, replace=False)])
+    tmp = list(set(zip(*train_pairs)[0]))[:100]
     for x in tmp:
         val_set.append([x, [b for a, b in train_pairs if a == x]])
 
@@ -60,7 +61,7 @@ if __name__ == '__main__':
         print 'loaded pretrained model.'
     except:
         # Fit the model
-        l2m = Learn2Map(dim=mapping_dim, alpha=1e-2, tol=1e-3, max_iter=2000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set)
+        l2m = Learn2Map(dim=mapping_dim, alpha=1e-3, tol=1e-3, max_iter=3000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set)
 
     # save model
     try:
@@ -71,7 +72,7 @@ if __name__ == '__main__':
 
     score = 0.
     for x, y in val_set:
-        pred = l2m.most_hypernyms(x, vocab_dict, topn=20)
+        pred = l2m.most_hypernyms(x, vocab_dict, topn=10)
         # score += jaccard_sim(y, pred)
         score += recall(y, pred)
     score /= len(val_set)

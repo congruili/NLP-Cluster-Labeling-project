@@ -42,6 +42,7 @@ class Learn2Map(WarpLearn):
         # self._check_params(X, Y, Y_dict)
 
         # n_samples, n_features = X.shape
+        margin = 3.
         n_samples = len(pairs)
         n_features = vocab_dict.values()[0].shape[0]
         n_vocabs = len(vocab_dict)
@@ -71,10 +72,10 @@ class Learn2Map(WarpLearn):
                 neg_label = np.random.choice(list(vocabs), 1)[0]
                 neg_score = np.dot(np.dot(self.L, vocab_dict[neg_label]), np.dot(self.C, vocab_dict[pairs[pos_idx][0]]))
 
-                if neg_score > pos_score - 1:
+                if neg_score > pos_score - margin:
                     break
 
-            if neg_score > pos_score - 1:
+            if neg_score > pos_score - margin:
                 change_ = True
                 k = int(np.floor((len(vocabs)) / N))
                 L_k = sum([1. / x for x in range(1, k + 1)])

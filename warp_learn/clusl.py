@@ -7,7 +7,7 @@ Created on Nov, 2016
 
 import sys
 import cPickle as pickle
-from collections import Counter
+from collections import Counter, defaultdict
 from learn2map import Learn2Map
 from utils import *
 
@@ -28,6 +28,27 @@ def pred_clus(entities, model, vocab_dict):
     else:
         return None
 
+def pred_clus2(entities, model, vocab_dict):
+    labels = defaultdict(list)
+    scores = {}
+    i = 0.
+    for each in entities:
+        each = '_'.join(each.split()).lower()
+        if not each in vocab_dict:
+            i += 1
+            continue
+        hypernyms = model.most_hypernyms(each, vocab_dict, topn=5)
+        for idx in range(len(hypernyms)):
+            labels[hypernyms[idx]].append(idx)
+    if 1 - i / len(entities) > .7:
+        print 'hit ratio: %s' % (1 - i / len(entities))
+        for k, v in labels.items():
+            scores[k] = sum([1. / (x + 1)**3. for x in v])
+        return zip(*sorted(scores.items(), key=lambda d:d[1], reverse=True))
+    else:
+        return None
+
+
 
 if __name__ == '__main__':
     usage = 'python clusl.py <path_to_clus> <path_to_dict> <mod_file>'
@@ -46,11 +67,15 @@ if __name__ == '__main__':
     # vocab_dict.update(vocab_dict2)
     l2m = Learn2Map().load_model(mod_file)
 
-    for label, entities in clus.items()[:20]:
-        if label.lower() != 'substance:drug':
-            continue
-        preds = pred_clus(entities, l2m, vocab_dict)
+
+    import numpy as np
+    label_set = [x for x in np.random.choice(clus.keys(), 40, replace=False) if len(clus[x]) > 5]
+    # label_set = ['DISEASE']
+    # for label, entities in clus_set:
+    for label in label_set:
+        entities = clus[label]
         # import pdb;pdb.set_trace()
+        preds = pred_clus2(entities, l2m, vocab_dict)
         if preds:
             print 'entities: %s' % entities
             print 'groundtruth: %s' % label.lower()
