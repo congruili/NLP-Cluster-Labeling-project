@@ -15,13 +15,14 @@ from utils import *
 
 
 if __name__ == '__main__':
-    usage = 'python run_learn2map.py [path_to_pairs] [path_to_dict] [mapping_dim]'
+    usage = 'python run_learn2map.py <path_to_pairs> <path_to_dict> <mapping_dim>'
     try:
         path_to_pairs = sys.argv[1]
         path_to_dict = sys.argv[2]
         mapping_dim = int(sys.argv[3])
     except:
         print usage
+        sys.exit()
 
     logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
     logger = logging.getLogger(sys.argv[0])
@@ -38,36 +39,53 @@ if __name__ == '__main__':
     #     raise e
 
     # Generate training and test set
-    train_ratio = .8
+    train_ratio = .95
     pairs = list(pairs)
     train_pairs = pairs[:int(len(pairs)*train_ratio)]
 
     test_pairs = pairs[int(len(pairs)*train_ratio):]
     # print len(test_pairs)
 
+
+    # validation set
+    val_set = []
+    tmp = set([x for x in np.random.choice(list(set(zip(*train_pairs)[0])), 100, replace=False)])
+    for x in tmp:
+        val_set.append([x, [b for a, b in train_pairs if a == x]])
+
+    print len(val_set)
     try:
         # load the pretrained model
         l2m = Learn2Map().load_model(sys.argv[4])
         print 'loaded pretrained model.'
     except:
         # Fit the model
-        l2m = Learn2Map(dim=mapping_dim, alpha=1e-3, tol=1e-3, max_iter=1000, norm_ctr=2., verbose=2).fit(train_pairs, vocab_dict, test_pairs)
+        l2m = Learn2Map(dim=mapping_dim, alpha=1e-2, tol=1e-3, max_iter=2000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set)
 
-    # # save model
-    # try:
-    #     l2m.save_model(sys.argv[4])
-    # except:
-    #     l2m.save_model('learn2map.mod')
+    # save model
+    try:
+        l2m.save_model(sys.argv[4])
+    except:
+        l2m.save_model('learn2map.mod')
 
-    # test
-    print 'predicting hypernyms:'
-    print 'token - groundtruth - pred'
-    for x, y in test_pairs[:10]:
-        pred = l2m.most_hypernyms(x, vocab_dict, topn=10)
-        print "%s - %s - %s" % (x, y, pred)
-        sim = l2m.most_similar(x, vocab_dict, topn=10)
-        print "%s" % sim
-        print
+
+    score = 0.
+    for x, y in val_set:
+        pred = l2m.most_hypernyms(x, vocab_dict, topn=20)
+        # score += jaccard_sim(y, pred)
+        score += recall(y, pred)
+    score /= len(val_set)
+    print score
+    # # test
+    # print 'predicting hypernyms:'
+    # for x, y in test_pairs[:10]:
+    #     pred = l2m.most_hypernyms(x, vocab_dict, topn=10)
+    #     print x
+    #     print 'groundtruth: %s' % [b for a, b in pairs if a == x]
+    #     print 'pred: %s' % pred
+    #     sim = l2m.most_similar(x, vocab_dict, topn=10)
+    #     print 'most similar: %s' % sim
+    #     print
     # Predict
     # pred = l2m.predict(test_pairs, vocab_dict)
     # # print 'pred labels:'

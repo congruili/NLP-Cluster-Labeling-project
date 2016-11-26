@@ -21,7 +21,7 @@ class Learn2Map(WarpLearn):
                 max_iter=max_iter, norm_ctr=norm_ctr, verbose=verbose,
                 verbose_interval=verbose_interval)
 
-    def fit(self, pairs, vocab_dict, eval_):
+    def fit(self, pairs, vocab_dict, val_set):
         """Estimate the mapping functions.
 
         Parameters
@@ -32,8 +32,8 @@ class Learn2Map(WarpLearn):
         vocab_dict : dict
             Word embeddings.
 
-        eval_ : list of tuples
-            evaluation pairs.
+        val_set :
+            validation set.
 
         Returns
         -------
@@ -50,7 +50,7 @@ class Learn2Map(WarpLearn):
         self._print_verbose_msg_init_beg()
         self.C = np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
         self.L = np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
-
+        # import pdb;pdb.set_trace()
         self.converged_ = False
         diff_CL = np.infty
         for n_iter in range(self.max_iter):
@@ -87,7 +87,6 @@ class Learn2Map(WarpLearn):
                 self.C -=  self.alpha * f_c
                 self.L -=  self.alpha * f_l
 
-
                 # Project weights to enforce constraints
                 # ||Ci|| <= self.norm_ctr (1)
                 # ||Li|| <= self.norm_ctr (2)
@@ -103,12 +102,21 @@ class Learn2Map(WarpLearn):
             # Here, we use a different strategy
             if change_:
                 diff_CL = np.linalg.norm(self.C - prev_C) + np.linalg.norm(self.L - prev_L)
-                # diff_CL = 1. - calc_accuracy(self.predict(eval_[0], Y_dict), eval_[1])
 
+                # calc jaccard sim
+                if n_iter % self.verbose_interval == 0:
+                    score = 0.
+                    for x, y in val_set:
+                        pred = self.most_hypernyms(x, vocab_dict, topn=10)
+                        # score += jaccard_sim(y[:10], pred)
+                        score += recall(y, pred)
+                    score /= len(val_set)
+                # diff_CL = 1. - calc_accuracy(self.predict(eval_[0], Y_dict), eval_[1])
+                    print score
                 if diff_CL < self.tol:
                     self.converged_ = True
                     break
-            self._print_verbose_msg_iter_end(n_iter, diff_CL)
+            self._print_verbose_msg_iter_end(n_iter, diff_CL, None)
 
         self._print_verbose_msg_init_end(diff_CL)
         if not self.converged_:
@@ -137,6 +145,7 @@ class Learn2Map(WarpLearn):
         Y = np.r_[vocab_dict.values()]
         X = vocab_dict[token]
         score = np.dot(unitvec(X), unitmatrix(Y).T)
+        score[vocabs.index(token)] = 0 # ignore the token itself
         yidx = score.argsort()[::-1][:topn]
 
         return [vocabs[idx] for idx in yidx]

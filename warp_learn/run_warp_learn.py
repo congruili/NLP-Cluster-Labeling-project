@@ -14,14 +14,14 @@ from utils import *
 
 
 if __name__ == '__main__':
-    usage = 'python run.py [path_to_clus] [path_to_label] [mapping_dim]'
+    usage = 'python run.py <path_to_clus> <path_to_label> <mapping_dim>'
     try:
         path_to_clus = sys.argv[1]
         path_to_label = sys.argv[2]
         mapping_dim = int(sys.argv[3])
     except:
         print usage
-
+        sys.exit()
 
     logging.basicConfig(format='%(asctime)s : %(threadName)s : %(levelname)s : %(message)s', level=logging.INFO)
     logger = logging.getLogger(sys.argv[0])

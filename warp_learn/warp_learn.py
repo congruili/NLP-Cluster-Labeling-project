@@ -243,15 +243,15 @@ class WarpLearn(object):
             self._init_prev_time = time()
             self._iter_prev_time = self._init_prev_time
 
-    def _print_verbose_msg_iter_end(self, n_iter, diff_CL):
+    def _print_verbose_msg_iter_end(self, n_iter, diff_CL, val_score=None):
         """Print verbose message on initialization."""
         if n_iter % self.verbose_interval == 0:
             if self.verbose == 1:
                 print("  Iteration %d" % n_iter)
             elif self.verbose >= 2:
                 cur_time = time()
-                print("  Iteration %d\t time lapse %.5fs\t diff_CL %.5f" % (
-                    n_iter, cur_time - self._iter_prev_time, diff_CL))
+                print("  Iteration %d\t time lapse %.5fs\t diff_CL %.5f%s" % (
+                    n_iter, cur_time - self._iter_prev_time, diff_CL, '\t val_score %s' % val_score if val_score else ''))
                 self._iter_prev_time = cur_time
 
     def _print_verbose_msg_init_end(self, diff_CL):

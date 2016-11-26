@@ -54,21 +54,6 @@ def unitvec(vec, norm='l2'):
         else:
             return vec
 
-    try:
-        first = next(iter(vec))     # is there at least one element?
-    except:
-        return vec
-
-    if isinstance(first, (tuple, list)) and len(first) == 2: # gensim sparse format
-        if norm == 'l1':
-            length = float(sum(abs(val) for _, val in vec))
-        if norm == 'l2':
-            length = 1.0 * math.sqrt(sum(val ** 2 for _, val in vec))
-        assert length > 0.0, "sparse documents must not contain any explicit zero entries"
-        return ret_normalized_vec(vec, length)
-    else:
-        raise ValueError("unknown input type")
-
 def check_is_fitted(estimator, attributes, msg=None, all_or_any=all):
     """Perform is_fitted validation for estimator.
     Checks if the estimator is fitted by verifying the presence of
@@ -104,11 +89,6 @@ def check_is_fitted(estimator, attributes, msg=None, all_or_any=all):
 
 class NotFittedError(ValueError, AttributeError):
     pass
-
-def calc_accuracy(sys_out, ground):
-    assert len(sys_out) == len(ground)
-    n = len(sys_out)
-    return sum([sys_out[i] == ground[i] for i in range(n)]) / float(n)
 
 def load_pickle(path_to_file):
     try:
@@ -152,4 +132,15 @@ def get_emb2(emb_file, vocab):
 
     return vocab_dict
 
+def calc_accuracy(sys_out, ground):
+    assert len(sys_out) == len(ground)
+    n = len(sys_out)
+    return sum([sys_out[i] == ground[i] for i in range(n)]) / float(n)
 
+def jaccard_sim(a, b):
+    a, b = set(a), set(b)
+    return 1.*len(a.intersection(b)) / len(a.union(b))
+
+def recall(a, b):
+    a, b = set(a), set(b)
+    return 1.*len(a.intersection(b)) / len(a)
