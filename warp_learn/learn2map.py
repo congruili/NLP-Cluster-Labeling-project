@@ -137,6 +137,30 @@ class Learn2Map(WarpLearn):
 
         return [vocabs[idx] for idx in yidx]
 
+    def most_hypernyms_by_cands(self, token, vocab_dict, topn=5, cands=None):
+        if not token in vocab_dict:
+            raise ValueError("The token `%s` is not in vocab_dict." % token)
+        self._check_is_fitted()
+        if cands == None or len(cands) == 0:
+            cands = vocab_dict.keys()
+        dim = vocab_dict.values()[0].shape[0]
+        X = vocab_dict[token]
+        missing_idx = []
+        Y = []
+        for i in range(len(cands)):
+            if cands[i] in vocab_dict:
+                Y.append(vocab_dict[cands[i]])
+            else:
+                Y.append(np.zeros((dim, )))
+                missing_idx.append(i)
+
+        Y = np.r_[Y]
+        score = np.dot(np.dot(self.C, X.T).T, np.dot(self.L, Y.T))
+        score[missing_idx] = -np.inf
+        yidx = score.argsort()[::-1][:topn]
+
+        return [cands[idx] for idx in yidx], score[yidx].tolist()
+
     def most_similar(self, token, vocab_dict, topn=5):
         """cosine similarity"""
         if not token in vocab_dict:
@@ -150,3 +174,30 @@ class Learn2Map(WarpLearn):
         yidx = score.argsort()[::-1][:topn]
 
         return [vocabs[idx] for idx in yidx]
+
+    def most_similar_by_cands(self, token, vocab_dict, topn=5, cands=None):
+        """cosine similarity"""
+        if not token in vocab_dict:
+            raise ValueError("The token `%s` is not in vocab_dict." % token)
+
+        if cands == None or len(cands) == 0:
+            cands = vocab_dict.keys()
+        dim = vocab_dict.values()[0].shape[0]
+        X = vocab_dict[token]
+        missing_idx = []
+        Y = []
+        for i in range(len(cands)):
+            if cands[i] in vocab_dict:
+                Y.append(vocab_dict[cands[i]])
+            else:
+                Y.append(np.zeros((dim, )))
+                missing_idx.append(i)
+
+        Y = np.r_[Y]
+        score = np.dot(unitvec(X), unitmatrix(Y).T)
+        score[missing_idx] = -np.inf
+        if token in cands:
+            score[cands.index(token)] = -np.inf # ignore the token itself
+        yidx = score.argsort()[::-1][:topn]
+
+        return [cands[idx] for idx in yidx], score[yidx].tolist()

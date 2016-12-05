@@ -144,3 +144,10 @@ def jaccard_sim(a, b):
 def recall(a, b):
     a, b = set(a), set(b)
     return 1.*len(a.intersection(b)) / len(a)
+
+if __name__ == '__main__':
+    emb_file = sys.argv[1]
+    label_cands  = load_pickle(sys.argv[2])
+    vocab_dict = load_pickle(sys.argv[3])
+    vocab_dict2 = get_emb2(emb_file, set([y for x in label_cands.values() for y in x]))
+    import pdb;pdb.set_trace()

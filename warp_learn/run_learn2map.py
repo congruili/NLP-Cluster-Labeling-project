@@ -31,7 +31,7 @@ if __name__ == '__main__':
     pairs = load_pickle(path_to_pairs)
     vocab_dict = load_pickle(path_to_dict)
     # try:
-    #     vocab_dict = get_emb2(sys.argv[3], set([item for sublist in pairs for item in sublist]))
+    #     vocab_dict = get_emb2(sys.argv[2], set([item for sublist in pairs for item in sublist]))
 
     #     with open(os.path.splitext(path_to_pairs)[0]+'_dict.p', 'wb') as outfile:
     #         pickle.dump(vocab_dict, outfile)
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # validation set
     val_set = []
     # tmp = set([x for x in np.random.choice(list(set(zip(*train_pairs)[0])), 100, replace=False)])
-    tmp = list(set(zip(*train_pairs)[0]))[:100]
+    tmp = list(set(zip(*train_pairs)[0]))[:10]
     for x in tmp:
         val_set.append([x, [b for a, b in train_pairs if a == x]])
 
@@ -70,13 +70,13 @@ if __name__ == '__main__':
         l2m.save_model('learn2map.mod')
 
 
-    score = 0.
-    for x, y in val_set:
-        pred = l2m.most_hypernyms(x, vocab_dict, topn=10)
-        # score += jaccard_sim(y, pred)
-        score += recall(y, pred)
-    score /= len(val_set)
-    print score
+    # score = 0.
+    # for x, y in val_set:
+    #     pred = l2m.most_hypernyms(x, vocab_dict, topn=10)
+    #     # score += jaccard_sim(y, pred)
+    #     score += recall(y, pred)
+    # score /= len(val_set)
+    # print score
     # # test
     # print 'predicting hypernyms:'
     # for x, y in test_pairs[:10]:

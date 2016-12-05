@@ -12,23 +12,7 @@ from learn2map import Learn2Map
 from utils import *
 
 
-def pred_clus(entities, model, vocab_dict):
-    labels = []
-    i = 0.
-    for each in entities:
-        each = '_'.join(each.split()).lower()
-        if not each in vocab_dict:
-            i += 1
-            continue
-        hypernyms = model.most_hypernyms(each, vocab_dict, topn=5)
-        labels.extend(hypernyms)
-    if 1 - i / len(entities) > .7:
-        print 'hit ratio: %s' % (1 - i / len(entities))
-        return zip(*sorted(Counter(labels).items(), key=lambda d:d[1], reverse=True))
-    else:
-        return None
-
-def pred_clus2(entities, model, vocab_dict):
+def pred_clus(entities, model, vocab_dict, factor=1., cands=None, topn=5, method=0):
     labels = defaultdict(list)
     scores = {}
     i = 0.
@@ -37,21 +21,27 @@ def pred_clus2(entities, model, vocab_dict):
         if not each in vocab_dict:
             i += 1
             continue
-        hypernyms = model.most_hypernyms(each, vocab_dict, topn=5)
+        if method == 0:
+            hypernyms, sim = model.most_hypernyms_by_cands(each, vocab_dict, topn=topn, cands=cands)
+        else:
+            hypernyms, sim = model.most_similar_by_cands(each, vocab_dict, topn=topn, cands=cands)
         for idx in range(len(hypernyms)):
+            # key is the candidate
+            # value is a list of all of its rankings for each entity if exists
+            # labels[hypernyms[idx]].append(sim[idx])
             labels[hypernyms[idx]].append(idx)
-    if 1 - i / len(entities) > .7:
-        print 'hit ratio: %s' % (1 - i / len(entities))
-        for k, v in labels.items():
-            scores[k] = sum([1. / (x + 1)**3. for x in v])
-        return zip(*sorted(scores.items(), key=lambda d:d[1], reverse=True))
-    else:
-        return None
 
+    # if (1 - i / len(entities)) < .7:
+        # return None
+    print 'hit ratio: %s' % (1 - i / len(entities))
+    for k, v in labels.items():
+        # scores[k] = sum([x**factor for x in v])
+        scores[k] = sum([1. / (x + 1)**factor for x in v])
+    return zip(*sorted(scores.items(), key=lambda d:d[1], reverse=True))
 
 
 if __name__ == '__main__':
-    usage = 'python clusl.py <path_to_clus> <path_to_dict> <mod_file>'
+    usage = 'python clusl.py <path_to_clus> <path_to_dict> <mod_file> <label_cands>'
     try:
         path_to_clus = sys.argv[1]
         path_to_dict = sys.argv[2]
@@ -62,6 +52,12 @@ if __name__ == '__main__':
 
     clus  = load_pickle(path_to_clus)
     vocab_dict = load_pickle(path_to_dict)
+    if len(sys.argv) == 5:
+        label_cands  = load_pickle(sys.argv[4])
+    else:
+        label_cands = None
+
+
     # vocab_dict = get_emb2(sys.argv[4], set([y for x in clus.values() for y in x]))
     # vocab_dict2 = load_pickle(path_to_dict)
     # vocab_dict.update(vocab_dict2)
@@ -69,15 +65,22 @@ if __name__ == '__main__':
 
 
     import numpy as np
-    label_set = [x for x in np.random.choice(clus.keys(), 40, replace=False) if len(clus[x]) > 5]
-    # label_set = ['DISEASE']
-    # for label, entities in clus_set:
+    # label_set = [x for x in np.random.choice(clus.keys(), 40, replace=False) if len(clus[x]) > 10]
+    label_set = clus.keys()
+
+    # import pdb;pdb.set_trace()
+    # label_set = ['FACILITY:AIRPORT', 'ORGANIZATION:HOSPITAL', 'ORGANIZATION:RELIGIOUS', 'ORGANIZATION:HOTEL']
+    # label_set = ['SUBSTANCE:CHEMICAL', 'PRODUCT:WEAPON', 'LOCATION:REGION']
+    results = {}
     for label in label_set:
         entities = clus[label]
-        # import pdb;pdb.set_trace()
-        preds = pred_clus2(entities, l2m, vocab_dict)
+        preds = pred_clus(entities, l2m, vocab_dict, factor=3., \
+                cands=list(label_cands[label]) if label_cands != None else None, topn=10, method=0)
         if preds:
-            print 'entities: %s' % entities
+            # print 'entities: %s' % entities
             print 'groundtruth: %s' % label.lower()
-            print 'preds: %s' % list(preds[0])
+            print 'preds: %s' % list(preds[0])[:10]
             print
+            results[label] = list(preds[0])[:10]
+    pickle.dump(results, open('results_sim.p','w'))
+    # import pdb;pdb.set_trace()
