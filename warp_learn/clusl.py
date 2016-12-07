@@ -66,16 +66,16 @@ if __name__ == '__main__':
 
     import numpy as np
     # label_set = [x for x in np.random.choice(clus.keys(), 40, replace=False) if len(clus[x]) > 10]
-    label_set = clus.keys()
+    # label_set = clus.keys()
 
     # import pdb;pdb.set_trace()
     # label_set = ['FACILITY:AIRPORT', 'ORGANIZATION:HOSPITAL', 'ORGANIZATION:RELIGIOUS', 'ORGANIZATION:HOTEL']
-    # label_set = ['SUBSTANCE:CHEMICAL', 'PRODUCT:WEAPON', 'LOCATION:REGION']
+    label_set = ['SUBSTANCE:CHEMICAL', 'PRODUCT:WEAPON', 'LOCATION:REGION']
     results = {}
     for label in label_set:
         entities = clus[label]
         preds = pred_clus(entities, l2m, vocab_dict, factor=3., \
-                cands=list(label_cands[label]) if label_cands != None else None, topn=10, method=0)
+                cands=list(label_cands[label]) if label_cands != None and label in label_cands else None, topn=10, method=0)
         if preds:
             # print 'entities: %s' % entities
             print 'groundtruth: %s' % label.lower()
@@ -83,4 +83,4 @@ if __name__ == '__main__':
             print
             results[label] = list(preds[0])[:10]
     pickle.dump(results, open('results_sim.p','w'))
-    # import pdb;pdb.set_trace()
+    import pdb;pdb.set_trace()

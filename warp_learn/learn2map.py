@@ -21,7 +21,7 @@ class Learn2Map(WarpLearn):
                 max_iter=max_iter, norm_ctr=norm_ctr, verbose=verbose,
                 verbose_interval=verbose_interval)
 
-    def fit(self, pairs, vocab_dict, val_set):
+    def fit(self, pairs, vocab_dict, val_set, save_per_iter=None):
         """Estimate the mapping functions.
 
         Parameters
@@ -107,8 +107,11 @@ class Learn2Map(WarpLearn):
                 # calc jaccard sim
                 if n_iter % self.verbose_interval == 0:
                     score = 0.
-                    for x, y in val_set:
-                        pred = self.most_hypernyms(x, vocab_dict, topn=10)
+                    np.random.seed(0)
+                    val_idx = np.random.choice(range(len(val_set)), int(len(val_set) * .02), replace=False)
+                    for idx in val_idx:
+                        x, y = val_set[idx]
+                        pred = self.most_hypernyms(x, vocab_dict, topn=20)
                         # score += jaccard_sim(y[:10], pred)
                         score += recall(y, pred)
                     score /= len(val_set)
@@ -118,6 +121,12 @@ class Learn2Map(WarpLearn):
                     self.converged_ = True
                     break
             self._print_verbose_msg_iter_end(n_iter, diff_CL, None)
+
+            # save tempory model
+            if save_per_iter:
+                if n_iter > 0 and n_iter % save_per_iter == 0:
+                    print 'saving model'
+                    self.save_model('n_iter_%s.mod'%n_iter)
 
         self._print_verbose_msg_init_end(diff_CL)
         if not self.converged_:
