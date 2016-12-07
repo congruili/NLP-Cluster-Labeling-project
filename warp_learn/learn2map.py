@@ -21,7 +21,7 @@ class Learn2Map(WarpLearn):
                 max_iter=max_iter, norm_ctr=norm_ctr, verbose=verbose,
                 verbose_interval=verbose_interval)
 
-    def fit(self, pairs, vocab_dict, val_set, save_per_iter=None):
+    def fit(self, pairs, vocab_dict, val_set, C_init=None, L_init=None, save_per_iter=None):
         """Estimate the mapping functions.
 
         Parameters
@@ -49,8 +49,8 @@ class Learn2Map(WarpLearn):
 
         # Initialization
         self._print_verbose_msg_init_beg()
-        self.C = np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
-        self.L = np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
+        self.C = C_init if C_init else np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
+        self.L = L_init if L_init else np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
         # import pdb;pdb.set_trace()
         self.converged_ = False
         diff_CL = np.infty
