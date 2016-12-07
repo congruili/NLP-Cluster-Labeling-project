@@ -71,6 +71,9 @@ if __name__ == '__main__':
         # load the pretrained model
         l2m = Learn2Map().load_model(sys.argv[4])
         print 'loaded pretrained model.'
+        print 'contine training.'
+        # import pdb;pdb.set_trace()
+        l2m = Learn2Map(dim=mapping_dim, alpha=1e-3, tol=1e-3, max_iter=10000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set, C_init=l2m.C, L_init=l2m.L, save_per_iter=50, save_prefix='cont_')
     except:
         # Fit the model
         l2m = Learn2Map(dim=mapping_dim, alpha=1e-3, tol=1e-3, max_iter=10000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set, save_per_iter=50)

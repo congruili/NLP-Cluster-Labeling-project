@@ -21,7 +21,7 @@ class Learn2Map(WarpLearn):
                 max_iter=max_iter, norm_ctr=norm_ctr, verbose=verbose,
                 verbose_interval=verbose_interval)
 
-    def fit(self, pairs, vocab_dict, val_set, C_init=None, L_init=None, save_per_iter=None):
+    def fit(self, pairs, vocab_dict, val_set, C_init=None, L_init=None, save_per_iter=None, save_prefix=''):
         """Estimate the mapping functions.
 
         Parameters
@@ -126,7 +126,7 @@ class Learn2Map(WarpLearn):
             if save_per_iter:
                 if n_iter > 0 and n_iter % save_per_iter == 0:
                     print 'saving model'
-                    self.save_model('n_iter_%s.mod'%n_iter)
+                    self.save_model('%sn_iter_%s.mod'%(save_prefix, n_iter))
 
         self._print_verbose_msg_init_end(diff_CL)
         if not self.converged_:
