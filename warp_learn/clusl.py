@@ -11,7 +11,6 @@ from collections import Counter, defaultdict
 from learn2map import Learn2Map
 from utils import *
 from evals import *
-from human_judge1_extlabels import extend_labels
 
 def pred_clus(entities, model, vocab_dict, factor=1., cands=None, topn=5, method=0):
     labels = defaultdict(list)
@@ -73,8 +72,18 @@ if __name__ == '__main__':
 
     # groundtruth labels
     groundtruth_labels = dict(zip(label_set, label_set))
-    for k, v in extend_labels.items():
-        groundtruth_labels[k] = v
+    # extend_labels = {
+    #     'EVENT:HURRICANE': ['EVENT:HURRICANE', 'STORM'],
+    #     'GPE': ['GPE', 'REGION'],
+    #     'CONTACT_INFO:url': ['CONTACT_INFO:url', 'COMMUNICATION'],
+    #     'CONTACT_INFO': ['CONTACT_INFO:url', 'COMMUNICATION'],
+    #     'GPE:STATE_PROVINCE': ['GPE:STATE_PROVINCE', 'REGION', 'STATE'],
+    #     'GPE:CITY': ['GPE:CITY', 'REGION'],
+    #     'GPE:COUNTRY': ['GPE:COUNTRY', 'REGION'],
+    #     'ORGANIZATION:EDUCATIONAL': ['ORGANIZATION:EDUCATIONAL', 'UNIVERSITY']
+    # }
+    # for k, v in extend_labels.items():
+    #     groundtruth_labels[k] = v
 
 
     if len(sys.argv) == 5:
