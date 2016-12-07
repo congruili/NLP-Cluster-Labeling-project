@@ -33,6 +33,11 @@ if __name__ == '__main__':
     words = list(set([y for x in pairs for y in x]))
     vocab_dict = load_pickle(path_to_dict)
 
+    # # norm
+    # for vocab in vocab_dict.keys():
+    #     vocab_dict[vocab] = vecnorm(vocab_dict[vocab])
+    # import pdb;pdb.set_trace()
+
     # check if all words in pairs can be found in vocab_dict
     # if not, discard those words
     # from copy import deepcopy
@@ -72,17 +77,16 @@ if __name__ == '__main__':
         l2m = Learn2Map().load_model(sys.argv[4])
         print 'loaded pretrained model.'
         print 'contine training.'
-        # import pdb;pdb.set_trace()
-        l2m = Learn2Map(dim=mapping_dim, alpha=1e-3, tol=1e-3, max_iter=10000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set, C_init=l2m.C, L_init=l2m.L, save_per_iter=50, save_prefix='cont_')
+        l2m = Learn2Map(dim=mapping_dim, alpha=1e-4, tol=1e-3, max_iter=100000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set, C_init=l2m.C, L_init=l2m.L, save_per_iter=100, save_prefix='contrelated_from_start')
     except:
         # Fit the model
-        l2m = Learn2Map(dim=mapping_dim, alpha=1e-3, tol=1e-3, max_iter=10000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set, save_per_iter=50)
+        l2m = Learn2Map(dim=mapping_dim, alpha=1e-4, tol=1e-3, max_iter=100000, norm_ctr=1., verbose=2).fit(train_pairs, vocab_dict, val_set, save_per_iter=100, save_prefix='contrelated_from_start')
 
     # save model
     try:
         l2m.save_model(sys.argv[4])
     except:
-        l2m.save_model('biglearn2map.mod')
+        l2m.save_model('2my_learn2map.mod')
 
 
     # score = 0.

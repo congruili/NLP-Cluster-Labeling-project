@@ -10,7 +10,7 @@ import cPickle as pickle
 from collections import Counter, defaultdict
 from learn2map import Learn2Map
 from utils import *
-
+from human_judge1_extlabels import extend_labels
 
 def pred_clus(entities, model, vocab_dict, factor=1., cands=None, topn=5, method=0):
     labels = defaultdict(list)
@@ -33,11 +33,93 @@ def pred_clus(entities, model, vocab_dict, factor=1., cands=None, topn=5, method
 
     # if (1 - i / len(entities)) < .7:
         # return None
-    print 'hit ratio: %s' % (1 - i / len(entities))
+    if (1 - i / len(entities)) < .05:
+        print 'Warning: low hit ratio: %s' % (1 - i / len(entities))
     for k, v in labels.items():
         # scores[k] = sum([x**factor for x in v])
         scores[k] = sum([1. / (x + 1)**factor for x in v])
     return zip(*sorted(scores.items(), key=lambda d:d[1], reverse=True))
+
+def pred_all(l2m, clus, label_set, vocab_dict, label_cands, factor=3., topn=10, method=0, print_it=False):
+    results = {}
+    for label in label_set:
+        entities = clus[label]
+        preds = pred_clus(entities, l2m, vocab_dict, factor=factor, \
+                cands=list(label_cands[label]) if label_cands != None and label in label_cands else None, topn=topn, method=method)
+        if preds:
+            if print_it:
+                # print 'entities: %s' % entities
+                print 'groundtruth: %s' % label.lower()
+                print 'preds: %s' % list(preds[0])[:topn]
+                print
+            results[label] = list(preds[0])[:topn]
+    return results
+
+def is_hit(true, pred):
+    if isinstance(true, str):
+        true = [true]
+    elif isinstance(true, (list, tuple)):
+        pass
+    else:
+        raise TypeError('Unknown argument true:%s' % true)
+    for each_true in true:
+        each_true = each_true.split(':')
+        for each in each_true:
+            if each.lower() in pred:
+                return True
+    return False
+
+def hit_rank(true, pred):
+    if isinstance(true, str):
+        true = [true]
+    elif isinstance(true, (list, tuple)):
+        pass
+    else:
+        raise TypeError('Unknown argument true:%s' % true)
+
+    true_labels = list(set([y.lower() for x in true for y in x.split(':')]))
+    rank = float('inf')
+    for each in true_labels:
+        if each in pred:
+            tmp = pred.index(each)
+            if rank > tmp:
+                rank = tmp
+    return rank if rank != float('inf') else None
+
+
+def match_at_K(truth, results, K):
+    """
+    Match@K: The relative number of clusters for which at least one of the top-K labels is correct.
+
+    @params
+    truth : dict, key is clus name, value is a list of true labels (we can add labels which we think are correct)
+    results : dict, key is clus name, value if a list of predicted labels
+    K : the K in the definition.
+    """
+    hit_count = 0.
+    for k, v in results.items():
+        if is_hit(truth[k], v[:K]):
+            hit_count += 1
+    return hit_count / len(results)
+
+def mrr_at_K(truth, results, K):
+    """
+    Mean Reciprocal Rank (MRR@K): Given an ordered list of K proposed labels for a cluster, the reciprocal rank
+    is the inverse of the rank of the first correct label, or zero if no label in the list is correct. The mean
+    reciprocal rank at K (MRR@K) is the average of the reciprocal ranks of all clusters.
+
+    @params
+    truth : dict, key is clus name, value is a list of true labels (we can add labels which we think are correct)
+    results : dict, key is clus name, value if a list of predicted labels
+    K : the K in the definition.
+    """
+    score = 0.
+    for k, v in results.items():
+        rank = hit_rank(truth[k], v[:K])
+        if rank != None:
+            score += 1 / (1. + rank)
+
+    return score / len(results)
 
 
 if __name__ == '__main__':
@@ -51,36 +133,50 @@ if __name__ == '__main__':
         sys.exit()
 
     clus  = load_pickle(path_to_clus)
+    label_set = clus.keys()
     vocab_dict = load_pickle(path_to_dict)
+
+    # groundtruth labels
+    groundtruth_labels = dict(zip(label_set, label_set))
+    for k, v in extend_labels.items():
+        groundtruth_labels[k] = v
+
+
     if len(sys.argv) == 5:
         label_cands  = load_pickle(sys.argv[4])
     else:
         label_cands = None
 
 
+
+
     # vocab_dict = get_emb2(sys.argv[4], set([y for x in clus.values() for y in x]))
     # vocab_dict2 = load_pickle(path_to_dict)
     # vocab_dict.update(vocab_dict2)
+
     l2m = Learn2Map().load_model(mod_file)
 
-
-    import numpy as np
+    # import numpy as np
     # label_set = [x for x in np.random.choice(clus.keys(), 40, replace=False) if len(clus[x]) > 10]
-    # label_set = clus.keys()
-
-    # import pdb;pdb.set_trace()
     # label_set = ['FACILITY:AIRPORT', 'ORGANIZATION:HOSPITAL', 'ORGANIZATION:RELIGIOUS', 'ORGANIZATION:HOTEL']
-    label_set = ['SUBSTANCE:CHEMICAL', 'PRODUCT:WEAPON', 'LOCATION:REGION']
-    results = {}
-    for label in label_set:
-        entities = clus[label]
-        preds = pred_clus(entities, l2m, vocab_dict, factor=3., \
-                cands=list(label_cands[label]) if label_cands != None and label in label_cands else None, topn=10, method=0)
-        if preds:
-            # print 'entities: %s' % entities
-            print 'groundtruth: %s' % label.lower()
-            print 'preds: %s' % list(preds[0])[:10]
-            print
-            results[label] = list(preds[0])[:10]
-    pickle.dump(results, open('results_sim.p','w'))
+    # label_set = ['ORGANIZATION:EDUCATIONAL', 'GPE:STATE_PROVINCE', 'CONTACT_INFO', 'WORK_OF_ART:SONG',
+    #                 'FACILITY:BRIDGE', 'WORK_OF_ART', 'CONTACT_INFO:url', 'FACILITY', 'GPE',
+    #                 'WORK_OF_ART:BOOK', 'PLANT', 'PRODUCT', 'FACILITY:ATTRACTION', 'LAW']
+    # topn = 10
+    results = pred_all(l2m, clus, label_set, vocab_dict, label_cands, factor=3, topn=10, method=0, print_it=False)
+    # results = load_pickle(sys.argv[5])
+    for topn in [10, 5, 3, 1]:
+        match_score = match_at_K(groundtruth_labels, results, topn)
+        mrr_score = mrr_at_K(groundtruth_labels, results, topn)
+        print 'Match@%s: %s' % (topn, match_score)
+        print 'MRR@%s: %s' % (topn, mrr_score)
+    # for k, v in clus.items():
+    #     results = pred_all(l2m, {k:v}, [k], vocab_dict, label_cands, factor=3., topn=topn, method=0, print_it=False)
+    #     # results = pred_all(l2m, {k:v}, label_set, vocab_dict, label_cands, factor=3., topn=topn, method=0, print_it=False)
+    #     if results:
+    #         match_score = match_at_K(dict(zip(label_set, label_set)), results, topn)
+    #         # print match_score
+    #         if match_score == 0:
+    #             print k
     import pdb;pdb.set_trace()
+    pickle.dump(results, open('results_sim.p','w'))

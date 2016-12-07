@@ -42,15 +42,15 @@ class Learn2Map(WarpLearn):
         # self._check_params(X, Y, Y_dict)
 
         # n_samples, n_features = X.shape
-        margin = 3.
+        margin = 15.
         n_samples = len(pairs)
         n_features = vocab_dict.values()[0].shape[0]
         n_vocabs = len(vocab_dict)
-
+        import pdb;pdb.set_trace()
         # Initialization
         self._print_verbose_msg_init_beg()
-        self.C = C_init if C_init else np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
-        self.L = L_init if L_init else np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
+        self.C = C_init if not C_init is None else np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
+        self.L = L_init if not L_init is None else np.random.randn(self.dim, n_features) + 1. / np.sqrt(n_features)
         # import pdb;pdb.set_trace()
         self.converged_ = False
         diff_CL = np.infty
@@ -73,6 +73,8 @@ class Learn2Map(WarpLearn):
                 neg_score = np.dot(np.dot(self.L, vocab_dict[neg_label]), np.dot(self.C, vocab_dict[pairs[pos_idx][0]]))
 
                 if neg_score > pos_score - margin:
+                    if n_iter % 20 == 0:
+                        print N
                     break
 
             if neg_score > pos_score - margin:
@@ -107,14 +109,14 @@ class Learn2Map(WarpLearn):
                 # calc jaccard sim
                 if n_iter % self.verbose_interval == 0:
                     score = 0.
-                    np.random.seed(0)
-                    val_idx = np.random.choice(range(len(val_set)), int(len(val_set) * .02), replace=False)
+                    # np.random.seed(0)
+                    val_idx = np.random.choice(range(len(val_set)), int(len(val_set) * .01), replace=False)
                     for idx in val_idx:
                         x, y = val_set[idx]
-                        pred = self.most_hypernyms(x, vocab_dict, topn=20)
+                        pred = self.most_hypernyms(x, vocab_dict, topn=max(5, len(y)))
                         # score += jaccard_sim(y[:10], pred)
                         score += recall(y, pred)
-                    score /= len(val_set)
+                    score /= len(val_idx)
                 # diff_CL = 1. - calc_accuracy(self.predict(eval_[0], Y_dict), eval_[1])
                     print score
                 if diff_CL < self.tol:

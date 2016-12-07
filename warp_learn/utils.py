@@ -10,6 +10,9 @@ import numpy as np
 from scipy import sparse
 import cPickle as pickle
 
+def vecnorm(vec):
+    return vec / np.linalg.norm(vec)
+
 def unitmatrix(matrix, norm='l2', axis=1):
     if norm == 'l1':
         maxtrixlen = np.sum(np.abs(matrix), axis=axis)
@@ -93,6 +96,14 @@ class NotFittedError(ValueError, AttributeError):
 def load_pickle(path_to_file):
     try:
         data = pickle.load(open(path_to_file, 'r'))
+    except Exception as e:
+        raise e
+
+    return data
+
+def dump_pickle(data, path_to_file):
+    try:
+        pickle.dump(data, open(path_to_file, 'w'))
     except Exception as e:
         raise e
 
