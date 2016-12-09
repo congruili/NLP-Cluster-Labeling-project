@@ -148,14 +148,12 @@ class Learn2Map(WarpLearn):
 
         return [vocabs[idx] for idx in yidx]
 
-    def most_hypernyms_by_cands(self, token, vocab_dict, topn=5, cands=None):
-        if not token in vocab_dict:
-            raise ValueError("The token `%s` is not in vocab_dict." % token)
+    def most_hypernyms_by_cands(self, token_vec, vocab_dict, topn=5, cands=None):
         self._check_is_fitted()
         if cands == None or len(cands) == 0:
             cands = vocab_dict.keys()
         dim = vocab_dict.values()[0].shape[0]
-        X = vocab_dict[token]
+        X = token_vec
         missing_idx = []
         Y = []
         for i in range(len(cands)):
@@ -186,15 +184,12 @@ class Learn2Map(WarpLearn):
 
         return [vocabs[idx] for idx in yidx]
 
-    def most_similar_by_cands(self, token, vocab_dict, topn=5, cands=None):
+    def most_similar_by_cands(self, token, token_vec, vocab_dict, topn=5, cands=None):
         """cosine similarity"""
-        if not token in vocab_dict:
-            raise ValueError("The token `%s` is not in vocab_dict." % token)
-
         if cands == None or len(cands) == 0:
             cands = vocab_dict.keys()
         dim = vocab_dict.values()[0].shape[0]
-        X = vocab_dict[token]
+        X = token_vec
         missing_idx = []
         Y = []
         for i in range(len(cands)):

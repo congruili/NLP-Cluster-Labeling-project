@@ -107,8 +107,6 @@ def dump_pickle(data, path_to_file):
     except Exception as e:
         raise e
 
-    return data
-
 def get_emb(emb_file, labels):
     sys.path.append("../autoextend")
     from embedding import PreTrainEmbedding
@@ -135,7 +133,7 @@ def get_emb2(emb_file, vocab):
         emb = pt.get_embedding(core)
         if emb == None:
             try:
-                emb = np.average(np.r_[[pt.get_embedding(x) for x in core.split('_') if x in pt.model]], axis=0)
+                emb = np.average(np.r_[[pt.get_embedding(x) for x in core.replace(' ', '_').split('_') if x in pt.model]], axis=0)
             except Exception as e:
                 raise e
         if type(emb) == type(np.zeros(1)):
