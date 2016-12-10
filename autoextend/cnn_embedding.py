@@ -67,11 +67,15 @@ embedding_size = 300
 embedding = PreTrainEmbedding('/Users/jason/EclipseWorkspace/GoogleNews-vectors-negative300.bin.gz', embedding_size)
 
 def check_embedding_coverage(labels, entities):
+    count_label = 0
     hit = 0
-    for l in labels.keys():
-        if embedding.get_embedding(l) is not None:
-            hit += 1
-    print 'Coverage for labels: ', float(hit)/len(labels.keys())
+    for l in labels:
+        for t in l.split(':'):
+            count_label += 1
+            if embedding.get_embedding(t) is not None:
+                hit += 1
+    print 'Coverage for labels: ', float(hit)/count_label
+
     hit = 0
     for ent in entities:
         if embedding.get_embedding(ent) is not None:
@@ -177,10 +181,10 @@ def create_label_embedding(label):
 import numpy as np
 import tensorflow as tf
 # Network Parameters
-learning_rate = 0.001
+learning_rate = 0.01
 training_iters = 100000
 default_batch_size = 50
-display_step = 1000
+display_step = 5000
 n_input = embedding_size
 MAX_DOCUMENT_LENGTH = 5
 n_steps = MAX_DOCUMENT_LENGTH
@@ -312,7 +316,8 @@ with tf.Session() as sess:
                 loss_val = sess.run(loss, feed_dict={x: batch_xs, y: batch_ys, keep_prob: 1.})
                 print "Iter " + str(step) + ", Minibatch Loss= " + "{:.6f}".format(loss_val) + \
                       ", Training Accuracy= " + "{:.5f}".format(accuracy)
-                
+
+            if step % 50000 == 0:
                 msg = 'Do you want to stop training the model?'
                 if raw_input("%s (y/N) " % msg).lower() == 'y':
                     break
@@ -360,10 +365,10 @@ with tf.Session() as sess:
     print 'Test Accuracy= ' + '{:.5f}'.format(accuracy)
 
     from evals import *
-    match_k = match_at_K(truth, results, 3)
+    match_k = match_at_K(truth, results, 1)
     print 'match_at_k = ' + '{:.5f}'.format(match_k)
 
-    mrr_k = mrr_at_K(truth, results, 3)
+    mrr_k = mrr_at_K(truth, results, 1)
     print 'mrr_at_k = ' + '{:.5f}'.format(mrr_k)
 
 

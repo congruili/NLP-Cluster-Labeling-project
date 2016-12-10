@@ -27,6 +27,12 @@ class PreTrainEmbedding():
 
     def get_embedding(self, word):
         word_list = [word, word.upper(), word.lower(), string.capwords(word, '_')]
+
+        tokens = word.split('_')
+        if len(tokens) > 1:
+            word_list.append(tokens[-1].upper())
+            word_list.append(tokens[-1].lower())
+
         for w in word_list:
             try:
                 result = self.model[w]
